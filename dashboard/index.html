@@ -184,7 +184,7 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
       <button id="spin" class="txt" aria-pressed="true" aria-label="Toggle auto-spin">SPIN</button>
       <button id="home" class="txt" aria-label="Back to current location">HERE</button>
     </div>
-    <div class="layers" id="layers" role="group" aria-label="Live layers"><button data-k="plates" aria-pressed="false">Plates</button><button data-k="quakes" aria-pressed="false">Quakes</button><button data-k="wx" aria-pressed="false">Weather</button></div>
+    <div class="layers" id="layers" role="group" aria-label="Live layers"><button data-k="plates" aria-pressed="false">Plates</button><button data-k="quakes" aria-pressed="false">Quakes</button><button data-k="volc" aria-pressed="false">Volcanoes</button><button data-k="wx" aria-pressed="false">Weather</button></div>
     <div class="lnote" id="lnote"></div>
     <div class="legend" id="legend"></div>
     <div class="tip" id="tip"></div>
@@ -397,9 +397,11 @@ function drawCountryNames(){
 /* ---------- live layers: plates, quakes, weather ---------- */
 var PLATES=JSON.parse(document.getElementById('plates').textContent);
 var PLATE_LABELS=[['Pacific',-160,5],['North America',-100,45],['South America',-60,-15],['Eurasia',80,55],['Africa',20,5],['Antarctic',0,-80],['Australia',135,-25],['India',78,20],['Arabian',47,24],['Nazca',-88,-22],['Cocos',-100,10],['Caribbean',-75,15],['Philippine Sea',133,20],['Juan de Fuca',-128,45],['Scotia',-50,-58]];
-var layers={plates:false,quakes:false,wx:false};
-try{var _ls=JSON.parse(localStorage.getItem('travel-atlas-layers')||'{}');['plates','quakes','wx'].forEach(function(k){layers[k]=!!_ls[k]})}catch(e){}
+var layers={plates:false,quakes:false,wx:false,volc:false};
+try{var _ls=JSON.parse(localStorage.getItem('travel-atlas-layers')||'{}');['plates','quakes','wx','volc'].forEach(function(k){layers[k]=!!_ls[k]})}catch(e){}
 var quakes=[],qState='idle',qAt=0,qSel=null,hoverQ=null;
+var VOLC=[["Kilauea", "USA (Hawaii)", "19.421", "-155.287", "1247", "1"], ["Mauna Loa", "USA (Hawaii)", "19.475", "-155.608", "4169", "0"], ["Mount St. Helens", "USA", "46.2", "-122.18", "2549", "0"], ["Mount Rainier", "USA", "46.853", "-121.76", "4392", "0"], ["Mount Hood", "USA", "45.374", "-121.695", "3426", "0"], ["Mount Shasta", "USA", "41.409", "-122.194", "4317", "0"], ["Lassen Peak", "USA", "40.492", "-121.508", "3187", "0"], ["Mammoth Mountain", "USA", "37.631", "-119.032", "3369", "0"], ["Long Valley Caldera", "USA", "37.7", "-118.87", "3390", "0"], ["Yellowstone", "USA", "44.43", "-110.67", "2805", "0"], ["Redoubt", "USA (Alaska)", "60.485", "-152.742", "3108", "0"], ["Augustine", "USA (Alaska)", "59.363", "-153.43", "1252", "0"], ["Shishaldin", "USA (Alaska)", "54.756", "-163.97", "2857", "1"], ["Pavlof", "USA (Alaska)", "55.417", "-161.894", "2519", "1"], ["Veniaminof", "USA (Alaska)", "56.17", "-159.38", "2507", "1"], ["Great Sitkin", "USA (Alaska)", "52.076", "-176.13", "1740", "1"], ["Cleveland", "USA (Alaska)", "52.825", "-169.945", "1730", "1"], ["Popocatepetl", "Mexico", "19.023", "-98.622", "5393", "1"], ["Colima", "Mexico", "19.514", "-103.62", "3850", "1"], ["Pico de Orizaba", "Mexico", "18.9", "-97.27", "5636", "0"], ["Fuego", "Guatemala", "14.473", "-90.88", "3763", "1"], ["Santiaguito", "Guatemala", "14.756", "-91.552", "2500", "1"], ["Pacaya", "Guatemala", "14.381", "-90.601", "2552", "1"], ["Santa Ana", "El Salvador", "13.853", "-89.63", "2381", "0"], ["Masaya", "Nicaragua", "11.984", "-86.161", "635", "0"], ["Telica", "Nicaragua", "12.602", "-86.845", "1061", "1"], ["Poas", "Costa Rica", "10.2", "-84.233", "2708", "1"], ["Rincon de la Vieja", "Costa Rica", "10.83", "-85.324", "1916", "1"], ["Arenal", "Costa Rica", "10.463", "-84.703", "1670", "0"], ["Soufriere Hills", "Montserrat", "16.72", "-62.18", "915", "0"], ["La Soufriere", "St. Vincent", "13.33", "-61.18", "1220", "0"], ["Mount Pelee", "Martinique", "14.809", "-61.165", "1397", "0"], ["Nevado del Ruiz", "Colombia", "4.895", "-75.322", "5321", "1"], ["Cotopaxi", "Ecuador", "-0.677", "-78.436", "5897", "0"], ["Sangay", "Ecuador", "-2.005", "-78.341", "5286", "1"], ["Reventador", "Ecuador", "-0.077", "-77.656", "3562", "1"], ["Sierra Negra", "Galapagos", "-0.83", "-91.17", "1124", "0"], ["Fernandina", "Galapagos", "-0.37", "-91.55", "1476", "0"], ["Sabancaya", "Peru", "-15.787", "-71.857", "5960", "1"], ["Ubinas", "Peru", "-16.355", "-70.903", "5672", "1"], ["El Misti", "Peru", "-16.294", "-71.409", "5822", "0"], ["Lascar", "Chile", "-23.367", "-67.736", "5592", "0"], ["Villarrica", "Chile", "-39.42", "-71.939", "2847", "1"], ["Llaima", "Chile", "-38.712", "-71.729", "3125", "1"], ["Copahue", "Chile/Argentina", "-37.857", "-71.168", "2953", "1"], ["Nevados de Chillan", "Chile", "-37.411", "-71.378", "3212", "1"], ["Puyehue-Cordon Caulle", "Chile", "-40.59", "-72.117", "2236", "0"], ["Calbuco", "Chile", "-41.329", "-72.611", "2003", "0"], ["Reykjanes (Sundhnukur)", "Iceland", "63.88", "-22.43", "100", "1"], ["Grimsvotn", "Iceland", "64.416", "-17.316", "1725", "0"], ["Katla", "Iceland", "63.633", "-19.05", "1512", "0"], ["Hekla", "Iceland", "63.992", "-19.666", "1491", "0"], ["Barđarbunga", "Iceland", "64.633", "-17.533", "2009", "0"], ["Eyjafjallajokull", "Iceland", "63.63", "-19.62", "1651", "0"], ["Beerenberg", "Jan Mayen", "71.08", "-8.16", "2277", "0"], ["Etna", "Italy (Sicily)", "37.748", "14.999", "3357", "1"], ["Stromboli", "Italy", "38.789", "15.213", "924", "1"], ["Vesuvius", "Italy", "40.821", "14.426", "1281", "0"], ["Campi Flegrei", "Italy", "40.827", "14.139", "458", "0"], ["Vulcano", "Italy", "38.404", "14.962", "500", "0"], ["Santorini", "Greece", "36.404", "25.396", "367", "0"], ["Nisyros", "Greece", "36.58", "27.18", "698", "0"], ["Nemrut", "Turkey", "38.65", "42.23", "2948", "0"], ["Teide", "Spain (Canaries)", "28.272", "-16.642", "3715", "0"], ["Cumbre Vieja", "Spain (La Palma)", "28.57", "-17.84", "1949", "0"], ["Fogo", "Cape Verde", "14.95", "-24.35", "2829", "0"], ["Nyiragongo", "DR Congo", "-1.52", "29.25", "3470", "1"], ["Nyamuragira", "DR Congo", "-1.408", "29.2", "3058", "1"], ["Erta Ale", "Ethiopia", "13.6", "40.67", "613", "1"], ["Nabro", "Eritrea", "13.37", "41.7", "2218", "0"], ["Ol Doinyo Lengai", "Tanzania", "-2.764", "35.914", "2962", "1"], ["Mount Cameroon", "Cameroon", "4.203", "9.17", "4095", "0"], ["Piton de la Fournaise", "Reunion", "-21.244", "55.708", "2632", "1"], ["Karthala", "Comoros", "-11.75", "43.38", "2361", "0"], ["Anak Krakatau", "Indonesia", "-6.102", "105.423", "305", "1"], ["Merapi", "Indonesia", "-7.54", "110.446", "2910", "1"], ["Semeru", "Indonesia", "-8.108", "112.922", "3676", "1"], ["Bromo", "Indonesia", "-7.942", "112.95", "2329", "1"], ["Ijen", "Indonesia", "-8.058", "114.242", "2799", "0"], ["Agung", "Indonesia (Bali)", "-8.343", "115.508", "3031", "1"], ["Batur", "Indonesia (Bali)", "-8.242", "115.375", "1717", "0"], ["Rinjani", "Indonesia", "-8.42", "116.47", "3726", "0"], ["Tambora", "Indonesia", "-8.25", "118", "2850", "0"], ["Lewotobi", "Indonesia", "-8.54", "122.775", "1584", "1"], ["Ibu", "Indonesia", "1.488", "127.63", "1325", "1"], ["Dukono", "Indonesia", "1.693", "127.894", "1229", "1"], ["Ruang", "Indonesia", "2.3", "125.37", "725", "1"], ["Karangetang", "Indonesia", "2.78", "125.4", "1784", "1"], ["Sinabung", "Indonesia", "3.17", "98.392", "2460", "1"], ["Marapi", "Indonesia", "-0.381", "100.473", "2891", "1"], ["Kerinci", "Indonesia", "-1.697", "101.264", "3805", "1"], ["Mayon", "Philippines", "13.257", "123.685", "2462", "1"], ["Taal", "Philippines", "14.002", "120.993", "311", "1"], ["Kanlaon", "Philippines", "10.412", "123.132", "2435", "1"], ["Pinatubo", "Philippines", "15.13", "120.35", "1486", "0"], ["Sakurajima", "Japan", "31.585", "130.657", "1117", "1"], ["Aso", "Japan", "32.884", "131.104", "1592", "1"], ["Shinmoedake (Kirishima)", "Japan", "31.931", "130.862", "1421", "1"], ["Suwanosejima", "Japan", "29.638", "129.714", "799", "1"], ["Mount Fuji", "Japan", "35.361", "138.727", "3776", "0"], ["Hakone (Owakudani)", "Japan", "35.233", "139.02", "1438", "0"], ["Asama", "Japan", "36.406", "138.523", "2568", "0"], ["Ontake", "Japan", "35.893", "137.48", "3067", "0"], ["Kusatsu-Shirane", "Japan", "36.618", "138.528", "2165", "0"], ["Unzen", "Japan", "32.761", "130.299", "1500", "0"], ["Usu", "Japan (Hokkaido)", "42.54", "140.84", "733", "0"], ["Tokachi-dake", "Japan (Hokkaido)", "43.417", "142.686", "2077", "0"], ["Iwo Jima", "Japan", "24.754", "141.289", "169", "1"], ["Nishinoshima", "Japan", "27.247", "140.874", "100", "1"], ["Klyuchevskoy", "Russia (Kamchatka)", "56.056", "160.642", "4754", "1"], ["Sheveluch", "Russia (Kamchatka)", "56.653", "161.36", "3283", "1"], ["Bezymianny", "Russia (Kamchatka)", "55.972", "160.595", "2882", "1"], ["Karymsky", "Russia (Kamchatka)", "54.049", "159.443", "1486", "1"], ["Ebeko", "Russia (Kurils)", "50.686", "156.014", "1156", "1"], ["Tolbachik", "Russia (Kamchatka)", "55.83", "160.39", "3682", "0"], ["Tavurvur (Rabaul)", "Papua New Guinea", "-4.271", "152.203", "688", "1"], ["Manam", "Papua New Guinea", "-4.1", "145.061", "1807", "1"], ["Ulawun", "Papua New Guinea", "-5.05", "151.33", "2334", "1"], ["Bagana", "Papua New Guinea", "-6.137", "155.196", "1855", "1"], ["Kadovar", "Papua New Guinea", "-3.62", "144.62", "365", "1"], ["Yasur", "Vanuatu", "-19.532", "169.447", "361", "1"], ["Ambrym", "Vanuatu", "-16.25", "168.12", "1334", "1"], ["Ambae", "Vanuatu", "-15.389", "167.835", "1496", "1"], ["Hunga Tonga", "Tonga", "-20.536", "-175.382", "114", "0"], ["Whakaari (White Island)", "New Zealand", "-37.52", "177.18", "321", "0"], ["Ruapehu", "New Zealand", "-39.281", "175.564", "2797", "0"], ["Taupo", "New Zealand", "-38.82", "176", "760", "0"], ["Erebus", "Antarctica", "-77.53", "167.17", "3794", "1"]].map(function(a){return {name:a[0],c:a[1],lat:+a[2],lon:+a[3],el:+a[4],f:a[5]==="1"}});
+var volc=VOLC.slice(),vState='idle',vAt=0,vSel=null,hoverV=null,vLive=0;
 var wx=[],wxState='idle',wxAt=0,hoverW=null,WX_PTS=[];
 for(var _la=-70;_la<=70;_la+=20)for(var _lo=-170;_lo<=170;_lo+=20)WX_PTS.push([_lo,_la]);
 function saveLayers(){try{localStorage.setItem('travel-atlas-layers',JSON.stringify(layers))}catch(e){}}
@@ -409,6 +411,7 @@ function noteUpdate(){
   var el=$('#lnote'),parts=[];
   if(layers.quakes)parts.push(qState==='ok'?quakes.length+' quakes M2.5+ in the last 24h (USGS)':qState==='err'?'Quakes: could not load the USGS feed':'Quakes: loading...');
   if(layers.wx)parts.push(wxState==='ok'?'Weather updated '+hhmm(wxAt)+' (Open-Meteo)':wxState==='err'?'Weather: could not load Open-Meteo':'Weather: loading...');
+  if(layers.volc)parts.push(VOLC.length+' notable volcanoes'+(vState==='ok'?' | '+vLive+' erupting now (NASA EONET)':vState==='err'?' | live feed unavailable':' | checking live feed...')+' | red = erupting now');
   if(layers.plates)parts.push('Plate boundaries: Bird 2003');
   el.textContent=parts.join(' | ');el.classList.toggle('on',parts.length>0);
 }
@@ -431,9 +434,24 @@ function loadWx(){
 }
 function buildClouds(){var gc=d3.geoCircle().radius(9.5).precision(5);wx.forEach(function(w){w.circ=gc.center([w.lon,w.lat])()})}
 function windCol(ws){return ws<15?'#e6f3ff':ws<35?'#8fd0ff':ws<60?'#ffd27a':'#ff7a5a'}
+function loadVolc(){
+  if(vState==='loading')return;vState='loading';noteUpdate();
+  fetch('https://eonet.gsfc.nasa.gov/api/v3/events?category=volcanoes&status=open').then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){
+    var base=VOLC.map(function(v){return {name:v.name,c:v.c,lat:v.lat,lon:v.lon,el:v.el,f:v.f}}),n=0;
+    (j.events||[]).forEach(function(ev){
+      var g=(ev.geometry||[]).filter(function(x){return x.coordinates&&x.coordinates.length>=2});if(!g.length)return;
+      var last=g[g.length-1],lon=last.coordinates[0],lat=last.coordinates[1],when=last.date?Date.parse(last.date):Date.now();
+      var hit=null,bd=1.2;base.forEach(function(v){var d=Math.hypot((v.lon-lon)*Math.cos(lat*Math.PI/180),v.lat-lat);if(d<bd){bd=d;hit=v}});
+      if(!hit){hit={name:(ev.title||'Volcano').replace(/\s*Volcano.*$/i,'').replace(/,.*$/,''),c:(ev.title||'').indexOf(',')>0?ev.title.split(',').pop().trim():'',lat:lat,lon:lon,el:0,f:true};base.push(hit)}
+      hit.live=true;hit.when=when;n++;
+    });
+    volc=base;vLive=n;vState='ok';vAt=Date.now();noteUpdate();
+  }).catch(function(){vState='err';vAt=Date.now();noteUpdate()});
+}
 function layerTick(){
   var now=Date.now();
   if(layers.quakes&&qState!=='loading'&&(qState==='idle'||now-qAt>(qState==='err'?60000:300000)))loadQuakes();
+  if(layers.volc&&vState!=='loading'&&(vState==='idle'||now-vAt>(vState==='err'?60000:900000)))loadVolc();
   if(layers.wx&&wxState!=='loading'&&(wxState==='idle'||now-wxAt>(wxState==='err'?60000:1800000)))loadWx();
 }
 function drawLayers(t){
@@ -457,6 +475,21 @@ function drawLayers(t){
       PLATE_LABELS.forEach(function(l){if(!visible(l[1],l[2]))return;var p=proj([l[1],l[2]]);if(!p)return;ctx.lineWidth=3;ctx.strokeStyle='rgba(240,227,198,.9)';ctx.strokeText(l[0]+' plate',p[0],p[1]);ctx.fillStyle='#7a1f0c';ctx.fillText(l[0]+' plate',p[0],p[1])});
       ctx.textAlign='start';ctx.textBaseline='alphabetic'}
   }
+  if(layers.volc){
+    var zv=Math.pow(zoom,.22),tn=Date.now();
+    volc.forEach(function(v){
+      if(!visible(v.lon,v.lat))return;var p=proj([v.lon,v.lat]);if(!p)return;
+      var r=(v.live?8:v.f?6.5:5.2)*zv,fill=v.live?'rgba(255,59,47,.95)':v.f?'rgba(255,140,40,.92)':'rgba(196,120,60,.9)';
+      if(v.live){var ph=((t+v.lon*30)%1600)/1600;ctx.beginPath();ctx.arc(p[0],p[1]-r*.3,r+ph*r*2.2,0,6.2832);ctx.strokeStyle='rgba(255,59,47,'+(.75*(1-ph)).toFixed(2)+')';ctx.lineWidth=1.8;ctx.stroke()}
+      ctx.beginPath();ctx.moveTo(p[0],p[1]-r);ctx.lineTo(p[0]+r*.9,p[1]+r*.7);ctx.lineTo(p[0]-r*.9,p[1]+r*.7);ctx.closePath();
+      ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle='rgba(30,12,4,.9)';ctx.lineWidth=1.2;ctx.stroke();
+    });
+    if(vSel){var pv=visible(vSel.lon,vSel.lat)&&proj([vSel.lon,vSel.lat]);
+      if(pv){var vt=vSel.name+' ('+vSel.c+')'+(vSel.el?' '+vSel.el.toLocaleString()+' m':'')+(vSel.live?' \u00b7 ERUPTING NOW':'');ctx.font='600 12px "DM Sans",system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+        var vw=Math.min(ctx.measureText(vt).width+14,W-16),vx=Math.max(vw/2+8,Math.min(W-vw/2-8,pv[0])),vy=pv[1]-28;
+        ctx.beginPath();if(ctx.roundRect)ctx.roundRect(vx-vw/2,vy-11,vw,22,6);else ctx.rect(vx-vw/2,vy-11,vw,22);ctx.fillStyle='rgba(27,20,13,.93)';ctx.fill();ctx.strokeStyle=vSel.live?'#ff3b2f':'#ff8c28';ctx.lineWidth=1.2;ctx.stroke();
+        ctx.fillStyle='#f0e3c6';ctx.fillText(vt,vx,vy+.5,vw-10);ctx.textAlign='start';ctx.textBaseline='alphabetic'}}
+  }
   if(layers.quakes&&quakes.length){
     var zs=Math.pow(zoom,.25),now=Date.now();
     quakes.forEach(function(q){
@@ -473,15 +506,16 @@ function drawLayers(t){
   }
 }
 function pickLayers(x,y){
-  hoverQ=null;hoverW=null;var bd=11;
+  hoverQ=null;hoverW=null;hoverV=null;var bd=11;
   if(layers.quakes)quakes.forEach(function(q){if(!visible(q.lon,q.lat))return;var p=proj([q.lon,q.lat]);if(!p)return;var d=Math.hypot(p[0]-x,p[1]-y);if(d<bd){bd=d;hoverQ=q}});
-  if(!hoverQ&&layers.wx){var bw=14;wx.forEach(function(w){if(!visible(w.lon,w.lat))return;var p=proj([w.lon,w.lat]);if(!p)return;var d=Math.hypot(p[0]-x,p[1]-y);if(d<bw){bw=d;hoverW=w}})}
+  if(!hoverQ&&layers.volc){var bv=13;volc.forEach(function(v){if(!visible(v.lon,v.lat))return;var p=proj([v.lon,v.lat]);if(!p)return;var d=Math.hypot(p[0]-x,p[1]-y);if(d<bv){bv=d;hoverV=v}})}
+  if(!hoverQ&&!hoverV&&layers.wx){var bw=14;wx.forEach(function(w){if(!visible(w.lon,w.lat))return;var p=proj([w.lon,w.lat]);if(!p)return;var d=Math.hypot(p[0]-x,p[1]-y);if(d<bw){bw=d;hoverW=w}})}
 }
 function setupLayers(){
   var btns=document.querySelectorAll('#layers button');
   [].forEach.call(btns,function(b){
     b.setAttribute('aria-pressed',String(layers[b.dataset.k]));
-    b.addEventListener('click',function(){var k=b.dataset.k;layers[k]=!layers[k];b.setAttribute('aria-pressed',String(layers[k]));if(k==='quakes'&&!layers[k])qSel=null;saveLayers();noteUpdate();layerTick()});
+    b.addEventListener('click',function(){var k=b.dataset.k;layers[k]=!layers[k];b.setAttribute('aria-pressed',String(layers[k]));if(k==='quakes'&&!layers[k])qSel=null;if(k==='volc'&&!layers[k])vSel=null;saveLayers();noteUpdate();layerTick()});
   });
   noteUpdate();
 }
@@ -572,10 +606,11 @@ function lonlatAt(x,y){
 function skiVisible(r){switch(skiFilter){case 'been':return r.been;case 'todo':return onBase(r)&&!r.been;case 'unl':return r.base==='unl';case 'five':return r.ikon&&(r.base==='5'||r.base==='chk');case 'full':return r.ikon&&r.base==='none';default:return onBase(r)}}
 function skiTip(r){return (r.been?'Been':'Not yet')+' \u00b7 '+baseText(r)}
 function pick(){
-  if(!pointer){hoverC=null;hoverS=null;hoverQ=null;hoverW=null;return}
+  if(!pointer){hoverC=null;hoverS=null;hoverQ=null;hoverW=null;hoverV=null;return}
   var x=pointer.x,y=pointer.y,best=null,bd=14,ski=mode==='ski';
   pickLayers(x,y);
   if(hoverQ){hoverS=null;hoverC=null;canvas.classList.add('hot');showTip('M'+hoverQ.mag.toFixed(1)+' '+hoverQ.place,ago(hoverQ.time)+' \u00b7 depth '+Math.round(hoverQ.depth)+' km',x,y);return}
+  if(hoverV){hoverS=null;hoverC=null;canvas.classList.add('hot');showTip(hoverV.name+(hoverV.live?' \u2014 ERUPTING NOW':''),hoverV.c+(hoverV.el?' \u00b7 '+hoverV.el.toLocaleString()+' m':'')+(hoverV.live?' \u00b7 updated '+ago(hoverV.when):hoverV.f?' \u00b7 frequently active':' \u00b7 active/potentially active'),x,y);return}
   if(hoverW){hoverS=null;hoverC=null;showTip(Math.round(hoverW.ws)+' km/h wind \u00b7 '+Math.round(hoverW.cl||0)+'% cloud',Math.round(hoverW.t)+'\u00b0C (20\u00b0 grid point)',x,y);return}
   (ski?state.ski:state.stops).forEach(function(s){
     if(ski?!skiVisible(s):hidden[s.status])return;
@@ -632,10 +667,10 @@ function up(e){
     var r=canvas.getBoundingClientRect();
     if(down&&down.moved<8&&performance.now()-down.t<600&&e.type==='pointerup'){
       pointer={x:e.clientX-r.left,y:e.clientY-r.top};pick();
-      if(hoverQ){qSel=hoverQ}else{qSel=null;
+      if(hoverQ){qSel=hoverQ;vSel=null}else if(hoverV){vSel=hoverV;qSel=null}else{qSel=null;vSel=null;
       if(mode==='ski'){if(hoverS)selectSki(hoverS,true)}else if(hoverS)selectStop(hoverS,true);else if(hoverC!=null)selectCountry(hoverC,true);}
     }
-    if(e.pointerType!=='mouse'){hoverC=null;hoverS=null;hoverQ=null;hoverW=null;tip.classList.remove('on')}
+    if(e.pointerType!=='mouse'){hoverC=null;hoverS=null;hoverQ=null;hoverW=null;hoverV=null;tip.classList.remove('on')}
     down=null;lastInput=performance.now();
   }
 }
