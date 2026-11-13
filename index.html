@@ -133,7 +133,7 @@ function drawGlobe(){
 /* ---------------- DESTINATION ---------------- */
 function dest(app,d){
  var ci=d.cities.findIndex(function(c){return c.id==st.c});if(ci>=0&&visC(d).indexOf(d.cities[ci])<0)ci=-1;
- var h='<button class="back" onclick="go(\'\')">← All destinations</button><h2>'+d.flag+' '+esc(d.name)+'</h2><p class="vibe">'+esc(d.tag)+'</p><div class="dates">Sunny has been: '+esc(d.been)+'</div>';
+ var h='<button class="back" onclick="go(\'\')">← All destinations</button><h2>'+d.flag+' '+esc(d.name)+'</h2><p class="vibe">'+esc(d.tag)+'</p><div class="dates">'+(d.trips?'Trips: ':'Sunny has been: ')+esc(d.been)+'</div>';
  if(d.trips){h+='<div class="trips" id="trips"><button data-t="all" class="'+(tripF=='all'?'on':'')+'">Both trips</button>'+d.trips.map(function(t){return '<button data-t="'+t.id+'" class="'+(tripF==t.id?'on':'')+'">'+esc(t.label)+'</button>'}).join('')+'</div>'+(tripF!='all'?'<div class="hint" style="margin-top:0">'+esc(d.trips.filter(function(t){return t.id==tripF})[0].blurb)+'</div>':'<div class="hint" style="margin-top:0">'+d.trips.map(function(t){return esc(t.label)+': '+esc(t.blurb)}).join(' ')+'</div>')}
  h+='<div class="map"><svg id="map" viewBox="0 0 760 460" role="img" aria-label="Map of '+esc(d.name)+'"></svg></div><div class="hint">Tap a pin to open that stop.</div>';
  h+='<div class="tabs" id="tabs"><button data-c="" class="'+(ci<0?'on':'')+'">Before you go</button>'+visC(d).map(function(c){return '<button data-c="'+c.id+'" class="'+(c.id==st.c?'on':'')+'">'+esc(c.name)+'</button>'}).join('')+'</div>';
