@@ -469,9 +469,9 @@ function setLoc(pos){myLoc={lon:pos.coords.longitude,lat:pos.coords.latitude,acc
 function locate(thenFly){
   if(!navigator.geolocation){locState='err';if(thenFly){var s=nowStop();flyTo(s.lon,s.lat,1.1)}return}
   locState='loading';
-  navigator.geolocation.getCurrentPosition(function(pos){setLoc(pos);if(thenFly)flyTo(myLoc.lon,myLoc.lat,Math.max(zoom,5));
+  navigator.geolocation.getCurrentPosition(function(pos){setLoc(pos);if(thenFly)flyTo(myLoc.lon,myLoc.lat,12);
     if(locWatch==null){try{locWatch=navigator.geolocation.watchPosition(setLoc,function(){},{enableHighAccuracy:false,maximumAge:60000})}catch(e){}}
-  },function(){locState='err';if(thenFly){if(myLoc)flyTo(myLoc.lon,myLoc.lat,Math.max(zoom,5));else{var s=nowStop();flyTo(s.lon,s.lat,1.1)}}},{enableHighAccuracy:false,timeout:10000,maximumAge:120000});
+  },function(){locState='err';if(thenFly){if(myLoc)flyTo(myLoc.lon,myLoc.lat,12);else{var s=nowStop();flyTo(s.lon,s.lat,1.1)}}},{enableHighAccuracy:false,timeout:10000,maximumAge:120000});
 }
 function drawMe(t){
   if(!myLoc||!visible(myLoc.lon,myLoc.lat))return;var p=proj([myLoc.lon,myLoc.lat]);if(!p)return;
