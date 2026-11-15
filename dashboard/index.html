@@ -185,7 +185,7 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
       <button id="zin" aria-label="Zoom in">+</button>
       <button id="zout" aria-label="Zoom out">&minus;</button>
       <button id="spin" class="txt" aria-pressed="true" aria-label="Toggle auto-spin">SPIN</button>
-      <button id="home" class="txt" aria-label="Fly to my live location">HERE</button>
+      <button id="home" aria-label="Zoom to my live location" title="Zoom to my location"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
     </div>
     <div class="layers" id="layers" role="group" aria-label="Live layers"><button data-k="plates" aria-pressed="false">Plates</button><button data-k="quakes" aria-pressed="false">Quakes</button><button data-k="volc" aria-pressed="false">Volcanoes</button><button data-k="wx" aria-pressed="false">Weather</button></div>
     <div class="lnote" id="lnote"></div>
@@ -311,6 +311,7 @@ var canvas=$('#globe'),ctx=canvas.getContext('2d'),stage=$('#stage'),tip=$('#tip
 var W=0,H=0,R=0,dpr=1,zoom=1,rot=[-28,-34,0];
 var proj=d3.geoOrthographic().clipAngle(90).precision(0.5);
 var path=d3.geoPath(proj,ctx);
+var projO=proj,pathO=path,projM=d3.geoMercator().precision(.5),pathM=d3.geoPath(projM,ctx);
 var grat=d3.geoGraticule10(),grat2=d3.geoGraticule().step([2,2])(),SPHERE={type:'Sphere'};
 var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 var mode='travel',skiFilter='ikon',skiSel='palisades-tahoe',skiEdit=false;
@@ -323,11 +324,12 @@ function resize(){
   W=Math.max(200,r.width);H=Math.max(200,r.height);
   canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
 }
-function clampZoom(z){return Math.max(.8,Math.min(40,z))}
+function clampZoom(z){return Math.max(.8,Math.min(40000,z))}
+var street=false;function isStreet(){return zoom>40}
 function ease(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2}
 function flyTo(lon,lat,z){
   var b0=-lon,d=((b0-rot[0]+540)%360)-180;
-  fly={t0:performance.now(),dur:1100,a:[rot[0],rot[1]],b:[rot[0]+d,Math.max(-70,Math.min(70,-lat))],z0:zoom,z1:clampZoom(z||zoom)};
+  fly={t0:performance.now(),dur:Math.abs(Math.log((z||zoom)/zoom))>3?2200:1100,a:[rot[0],rot[1]],b:[rot[0]+d,Math.max(-70,Math.min(70,-lat))],z0:zoom,z1:clampZoom(z||zoom)};
   vel=[0,0];
 }
 function visible(lon,lat){return d3.geoDistance([lon,lat],[-rot[0],-rot[1]])<Math.PI/2-.015}
@@ -343,7 +345,7 @@ function frame(t){
   var dt=Math.min(64,t-(lastT||t));lastT=t;
   if(fly){
     var p=Math.min(1,(t-fly.t0)/fly.dur),e=ease(p);
-    rot[0]=fly.a[0]+(fly.b[0]-fly.a[0])*e;rot[1]=fly.a[1]+(fly.b[1]-fly.a[1])*e;zoom=fly.z0+(fly.z1-fly.z0)*e;
+    rot[0]=fly.a[0]+(fly.b[0]-fly.a[0])*e;rot[1]=fly.a[1]+(fly.b[1]-fly.a[1])*e;zoom=Math.exp(Math.log(fly.z0)+(Math.log(fly.z1)-Math.log(fly.z0))*e);
     if(p>=1)fly=null;
   }else if(!dragging){
     if(Math.abs(vel[0])>.002||Math.abs(vel[1])>.002){
@@ -462,6 +464,27 @@ function layerTick(){
   if(layers.volc&&vState!=='loading'&&(vState==='idle'||now-vAt>(vState==='err'?60000:900000)))loadVolc();
   if(layers.wx&&wxState!=='loading'&&(wxState==='idle'||now-wxAt>(wxState==='err'?60000:1800000)))loadWx();
 }
+/* ---------- street tiles (OpenStreetMap) when zoomed far in ---------- */
+var TILES={},tileQ=0,tileN=0;
+function tilePeek(k){var t=TILES[k];return t&&t.ok?t.i:null}
+function tileImg(z,x,y){var k=z+'/'+x+'/'+y,t=TILES[k];
+  if(!t){if(tileQ>=10)return null;if(tileN>500){TILES={};tileN=0}t=TILES[k]={i:new Image(),ok:false};tileN++;tileQ++;
+    t.i.onload=function(){t.ok=true;tileQ--};t.i.onerror=function(){tileQ--};t.i.src='https://tile.openstreetmap.org/'+k+'.png'}
+  return t.ok?t.i:null}
+function drawTiles(){
+  ctx.fillStyle='#e6dfcc';ctx.fillRect(0,0,W,H);
+  var z=Math.max(0,Math.min(19,Math.round(Math.log(2*Math.PI*R/256)/Math.LN2))),n=Math.pow(2,z),ts=2*Math.PI*R/n;
+  var lat0=-rot[1]*Math.PI/180,cxT=((-rot[0]+180)/360)*n,cyT=(1-Math.log(Math.tan(lat0)+1/Math.cos(lat0))/Math.PI)/2*n;
+  var x0=Math.floor(cxT-W/2/ts),x1=Math.floor(cxT+W/2/ts),y0=Math.max(0,Math.floor(cyT-H/2/ts)),y1=Math.min(n-1,Math.floor(cyT+H/2/ts));
+  for(var ty=y0;ty<=y1;ty++)for(var tx=x0;tx<=x1;tx++){
+    var xm=((tx%n)+n)%n,sx=W/2+(tx-cxT)*ts,sy=H/2+(ty-cyT)*ts,img=tileImg(z,xm,ty);
+    if(img)ctx.drawImage(img,sx,sy,ts+.6,ts+.6);
+    else if(z>0){var pi=tilePeek((z-1)+'/'+(xm>>1)+'/'+(ty>>1));if(pi)ctx.drawImage(pi,(xm&1)*128,(ty&1)*128,128,128,sx,sy,ts+.6,ts+.6)}
+  }
+  ctx.font='10px "DM Sans",system-ui,sans-serif';ctx.textAlign='right';ctx.textBaseline='bottom';
+  var tx2='\u00a9 OpenStreetMap contributors',tw=ctx.measureText(tx2).width;
+  ctx.fillStyle='rgba(255,255,255,.75)';ctx.fillRect(W-tw-10,H-16,tw+8,14);ctx.fillStyle='#333';ctx.fillText(tx2,W-6,H-3);ctx.textAlign='start';ctx.textBaseline='alphabetic';
+}
 /* ---------- live location ---------- */
 var myLoc=null,locWatch=null,locState='idle';
 try{var _ml=JSON.parse(localStorage.getItem('travel-atlas-loc')||'null');if(_ml&&isFinite(_ml.lon)&&isFinite(_ml.lat))myLoc=_ml}catch(e){}
@@ -469,9 +492,9 @@ function setLoc(pos){myLoc={lon:pos.coords.longitude,lat:pos.coords.latitude,acc
 function locate(thenFly){
   if(!navigator.geolocation){locState='err';if(thenFly){var s=nowStop();flyTo(s.lon,s.lat,1.1)}return}
   locState='loading';
-  navigator.geolocation.getCurrentPosition(function(pos){setLoc(pos);if(thenFly)flyTo(myLoc.lon,myLoc.lat,12);
+  navigator.geolocation.getCurrentPosition(function(pos){setLoc(pos);if(thenFly)flyTo(myLoc.lon,myLoc.lat,8000);
     if(locWatch==null){try{locWatch=navigator.geolocation.watchPosition(setLoc,function(){},{enableHighAccuracy:false,maximumAge:60000})}catch(e){}}
-  },function(){locState='err';if(thenFly){if(myLoc)flyTo(myLoc.lon,myLoc.lat,12);else{var s=nowStop();flyTo(s.lon,s.lat,1.1)}}},{enableHighAccuracy:false,timeout:10000,maximumAge:120000});
+  },function(){locState='err';if(thenFly){if(myLoc)flyTo(myLoc.lon,myLoc.lat,8000);else{var s=nowStop();flyTo(s.lon,s.lat,1.1)}}},{enableHighAccuracy:false,timeout:10000,maximumAge:120000});
 }
 function drawMe(t){
   if(!myLoc||!visible(myLoc.lon,myLoc.lat))return;var p=proj([myLoc.lon,myLoc.lat]);if(!p)return;
@@ -501,7 +524,7 @@ function drawLayers(t){
       ctx.textAlign='start';ctx.textBaseline='alphabetic'}
   }
   if(layers.volc){
-    var zv=Math.pow(zoom,.22),tn=Date.now();
+    var zv=Math.pow(Math.min(zoom,40),.22),tn=Date.now();
     volc.forEach(function(v){
       if(!visible(v.lon,v.lat))return;var p=proj([v.lon,v.lat]);if(!p)return;
       var r=(v.live?8:v.f?6.5:5.2)*zv,fill=v.live?'rgba(255,59,47,.95)':v.f?'rgba(255,140,40,.92)':'rgba(196,120,60,.9)';
@@ -516,7 +539,7 @@ function drawLayers(t){
         ctx.fillStyle='#f0e3c6';ctx.fillText(vt,vx,vy+.5,vw-10);ctx.textAlign='start';ctx.textBaseline='alphabetic'}}
   }
   if(layers.quakes&&quakes.length){
-    var zs=Math.pow(zoom,.25),now=Date.now();
+    var zs=Math.pow(Math.min(zoom,40),.25),now=Date.now();
     quakes.forEach(function(q){
       if(!visible(q.lon,q.lat))return;var p=proj([q.lon,q.lat]);if(!p)return;
       var age=(now-q.time)/3600000,col=age<1?'255,59,47':age<6?'255,154,47':'255,210,77',r=Math.max(2.6,(q.mag-1.6)*2.4)*zs;
@@ -561,11 +584,15 @@ function renderDeals(){
   box.append(h('p',{class:'dnote',text:'Skyscanner and Google Flights open with your route filled in. points.me and seats.aero need your own login, so they open the site; search the route shown above.'}));
 }
 function draw(t){
-  R=Math.min(W,H)*.43*zoom;
   var cx=W/2,cy=H/2;
-  proj.scale(R).translate([cx,cy]).rotate([rot[0],rot[1],0]);
+  street=isStreet();
+  if(street&&fly){var zq=Math.round(Math.log(2*Math.PI*Math.min(W,H)*.43*zoom/256)/Math.LN2),zT=Math.round(Math.log(2*Math.PI*Math.min(W,H)*.43*fly.z1/256)/Math.LN2);if(zT-zq>1)street=false}
+  R=Math.min(W,H)*.43*(street?zoom:Math.min(zoom,40));
+  if(street){projM.scale(R).translate([cx,cy]).rotate([rot[0],0,0]).center([0,-rot[1]]).clipExtent([[-60,-60],[W+60,H+60]]);proj=projM;path=pathM}
+  else{projO.scale(R).translate([cx,cy]).rotate([rot[0],rot[1],0]);proj=projO;path=pathO}
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,W,H);
+  if(street){drawTiles()}else{
   /* aged-map ocean */
   var g=ctx.createRadialGradient(cx,cy,R*.9,cx,cy,R*1.12);
   g.addColorStop(0,'rgba(20,12,4,.55)');g.addColorStop(1,'rgba(20,12,4,0)');
@@ -585,11 +612,12 @@ function draw(t){
   for(k=0;k<2;k++){var id=hl[k];if(id==null)continue;var hf=L.byId.get(Number(id));if(!hf)continue;
     ctx.beginPath();path(hf);ctx.strokeStyle=k===0?'#2a1b0b':'rgba(42,27,11,.55)';ctx.lineWidth=k===0?1.8:1.2;ctx.stroke()}
   if(mode==='travel')drawCountryNames();
+  }
   drawLayers(t);drawMe(t);
   /* edge shading */
-  g=ctx.createRadialGradient(cx,cy,R*.55,cx,cy,R);
+  if(!street){g=ctx.createRadialGradient(cx,cy,R*.55,cx,cy,R);
   g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(40,24,6,.5)');
-  ctx.beginPath();path(SPHERE);ctx.fillStyle=g;ctx.fill();
+  ctx.beginPath();path(SPHERE);ctx.fillStyle=g;ctx.fill()}
   drawRose(W-50,H-52,Math.min(34,W*.07));
   if(mode==='ski'){drawSki(t);return}
   if(mode==='wine'){drawWine(t);return}
@@ -606,7 +634,7 @@ function draw(t){
   });
   ctx.setLineDash([]);ctx.globalAlpha=1;
   /* pins */
-  var zs=Math.pow(zoom,.35),showLabels=zoom>=1.45;
+  var zs=Math.pow(Math.min(zoom,40),.35),showLabels=zoom>=1.45;
   state.stops.forEach(function(s){
     if(hidden[s.status]||!visible(s.lon,s.lat))return;
     var p=proj([s.lon,s.lat]);if(!p)return;
@@ -625,7 +653,7 @@ function draw(t){
 
 /* ---------- picking ---------- */
 function lonlatAt(x,y){
-  if(Math.hypot(x-W/2,y-H/2)>R)return null;
+  if(!street&&Math.hypot(x-W/2,y-H/2)>R)return null;
   var ll=proj.invert([x,y]);
   return ll&&isFinite(ll[0])&&isFinite(ll[1])?ll:null;
 }
@@ -683,7 +711,7 @@ canvas.addEventListener('pointermove',function(e){
       var a=Array.from(ptrs.values()),d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
       if(pinch)zoom=clampZoom(zoom*d/pinch);pinch=d;
     }else{
-      var k=57.3/R;rot[0]+=dx*k;rot[1]=Math.max(-80,Math.min(80,rot[1]-dy*k));vel=[dx*k*.6,-dy*k*.6];
+      var k=57.3/R,kv=isStreet()?k*Math.cos(rot[1]*Math.PI/180):k;rot[0]+=dx*k;rot[1]=Math.max(-80,Math.min(80,rot[1]-dy*kv));vel=[dx*k*.6,-dy*k*.6];
     }
   }else{pointer={x:x,y:y};hoverDirty=true}
 });
@@ -709,7 +737,7 @@ $('#zout').addEventListener('click',function(){flyZoom(zoom/1.3)});
 function flyZoom(z){fly={t0:performance.now(),dur:300,a:[rot[0],rot[1]],b:[rot[0],rot[1]],z0:zoom,z1:clampZoom(z)}}
 $('#spin').addEventListener('click',function(){spin=!spin;this.setAttribute('aria-pressed',String(spin))});
 $('#spin').setAttribute('aria-pressed',String(spin));
-$('#home').addEventListener('click',function(){if(mode==='ski'){flyTo(-120.0,39.2,1.9);return}if(mode==='wine'){flyTo(-122.3,38.5,1.6);return}locate(true)});
+$('#home').addEventListener('click',function(){locate(true)});
 function nowStop(){return state.stops.filter(function(s){return s.now})[0]||state.stops[0]}
 
 /* ---------- selection ---------- */
@@ -907,7 +935,7 @@ function baseText(r){if(!r.ikon)return 'Not on Ikon';return r.base==='unl'?'Base
 function baseShort(r){return r.base==='unl'?'Unlimited':r.base==='5'?'5 days':r.base==='none'?'Full pass only':'Check'}
 function skiById(id){return state.ski.filter(function(r){return r.id===id})[0]}
 function drawSki(t){
-  var zs=Math.pow(zoom,.3);
+  var zs=Math.pow(Math.min(zoom,40),.3);
   state.ski.forEach(function(r){
     if(!skiVisible(r)||!visible(r.lon,r.lat))return;
     var p=proj([r.lon,r.lat]);if(!p)return;
@@ -1024,7 +1052,7 @@ function wineVisible(r){
 var W_BODY=['','Light','Light-medium','Medium','Full','Very full'],W_TAN=['None','Low','Low-medium','Medium','High','Very high'],W_ACID=['','Low','Low-medium','Medium','High','Very high'],W_FIN=['','Short','Short-medium','Medium','Long','Very long'];
 function meter(label,v,words){return [h('span',{text:label}),h('i',null,h('u',{style:'width:'+Math.round(v/5*100)+'%'})),h('span',{text:words[v]})]}
 function drawWine(t){
-  var zs=Math.pow(zoom,.3);
+  var zs=Math.pow(Math.min(zoom,40),.3);
   WINE.forEach(function(r){
     if(!wineShown(r)||!visible(r.lon,r.lat))return;
     var p=proj([r.lon,r.lat]);if(!p)return;
